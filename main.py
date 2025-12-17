@@ -3,15 +3,17 @@
 SiparisAgent - Fridge Order Automation CLI
 
 Usage:
-    python main.py login   - Login to Getir (save session)
-    python main.py order   - Add missing products to cart
-    python main.py cart    - Show cart info
-    python main.py test    - Dry run with test products
+    python main.py login              - Login to Getir (save session)
+    python main.py order              - Add test products to cart
+    python main.py order <image>      - Detect missing items from image and order
+    python main.py detect <image>     - Detect items in image (no ordering)
+    python main.py cart               - Show cart info
+    python main.py test               - Dry run with test products
 """
 
 import sys
 from browser.getir_client import GetirClient
-from detection.detector import get_missing_products
+from detection.detector import get_missing_products, detect_from_image
 from config.products import get_test_products
 
 
@@ -28,13 +30,17 @@ def cmd_login():
             client.login()
 
 
-def cmd_order():
+def cmd_order(image_path: str = None):
     """Handle order command - add products to cart."""
     print("\n🛒 SiparisAgent - Auto Order")
     print("=" * 40)
     
     # Get missing products (from detector or test)
-    products = get_missing_products()
+    products = get_missing_products(image_path)
+    
+    if not products:
+        print("\n✅ No missing products detected!")
+        return
     
     print(f"\n📋 Products to order ({len(products)}):")
     for p in products:
@@ -80,6 +86,23 @@ def cmd_order():
         print("👋 Browser closed.")
 
 
+def cmd_detect(image_path: str):
+    """Detect items in image without ordering."""
+    print("\n🔍 SiparisAgent - Fridge Detection")
+    print("=" * 40)
+    
+    products = detect_from_image(image_path)
+    
+    if products:
+        print(f"\n📋 Missing products ({len(products)}):")
+        for p in products:
+            print(f"   • {p['name']} x{p['quantity']} [{p.get('category', '')}]")
+    else:
+        print("\n✅ All expected items are present in the fridge!")
+    
+    print("\n💡 Run 'python main.py order <image>' to order these items.")
+
+
 def cmd_cart():
     """Show current cart status."""
     print("\n🛒 SiparisAgent - Cart Info")
@@ -112,30 +135,35 @@ def main():
     """Main entry point."""
     if len(sys.argv) < 2:
         print(__doc__)
-        print("\nAvailable commands: login, order, cart, test")
+        print("\nAvailable commands: login, order, detect, cart, test")
         sys.exit(1)
     
     command = sys.argv[1].lower()
     
-    commands = {
-        "login": cmd_login,
-        "order": cmd_order,
-        "cart": cmd_cart,
-        "test": cmd_test,
-    }
-    
-    if command in commands:
-        try:
-            commands[command]()
-        except KeyboardInterrupt:
-            print("\n\n⚠ Cancelled by user")
-        except Exception as e:
-            print(f"\n❌ Error: {e}")
-            raise
-    else:
-        print(f"❌ Unknown command: {command}")
-        print("Available commands: login, order, cart, test")
-        sys.exit(1)
+    try:
+        if command == "login":
+            cmd_login()
+        elif command == "order":
+            image_path = sys.argv[2] if len(sys.argv) > 2 else None
+            cmd_order(image_path)
+        elif command == "detect":
+            if len(sys.argv) < 3:
+                print("❌ Usage: python main.py detect <image_path>")
+                sys.exit(1)
+            cmd_detect(sys.argv[2])
+        elif command == "cart":
+            cmd_cart()
+        elif command == "test":
+            cmd_test()
+        else:
+            print(f"❌ Unknown command: {command}")
+            print("Available commands: login, order, detect, cart, test")
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n⚠ Cancelled by user")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        raise
 
 
 if __name__ == "__main__":

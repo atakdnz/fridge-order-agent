@@ -210,6 +210,146 @@ class GetirClient:
             print(f"   ❌ Search failed: {e}")
             return False
 
+    def get_product_list(self, limit: int = 10) -> list[dict]:
+        """
+        Scrape visible products from search results.
+        
+        Returns:
+            List of dicts with 'name', 'price', 'index' keys
+        """
+        products = []
+        
+        try:
+            # Wait for products to load
+            time.sleep(2)
+            
+            # Get all product buttons
+            product_buttons = self.page.locator("button[aria-label='Show Product']")
+            count = product_buttons.count()
+            print(f"   📦 Found {count} products on page")
+            
+            if count == 0:
+                print(f"   ⚠ No products visible!")
+                return []
+            
+            count = min(count, limit)
+            
+            for i in range(count):
+                try:
+                    btn = product_buttons.nth(i)
+                    # Get text content which usually contains name and price
+                    text = btn.text_content() or ""
+                    
+                    # Try to extract name and price
+                    # Format is usually: "Product Name ₺XX.XX"
+                    parts = text.strip().split("₺")
+                    name = parts[0].strip() if parts else text.strip()
+                    price = f"₺{parts[1].strip()}" if len(parts) > 1 else "N/A"
+                    
+                    products.append({
+                        "name": name[:50],  # Truncate long names
+                        "price": price,
+                        "index": i
+                    })
+                    print(f"      {i+1}. {name[:40]} - {price}")
+                except Exception as e:
+                    print(f"   ! Error scraping product {i}: {e}")
+                    
+        except Exception as e:
+            print(f"   ⚠ Could not scrape products: {e}")
+        
+        return products
+
+    def add_product_smart(self, name: str, quantity: int = 1, preference: str = "cheapest") -> bool:
+        """
+        Search for a product and add it to cart using AI to choose the best option.
+        
+        Args:
+            name: Product to search for
+            quantity: How many to add
+            preference: Selection criteria for AI (cheapest, organic, etc.)
+        """
+        print(f"\n🔍 Searching for: {name}")
+        
+        if not self.search_product(name):
+            print(f"   ❌ Search failed for '{name}'")
+            return False
+        
+        # Get available products
+        print(f"   📋 Scraping products...")
+        products = self.get_product_list()
+        
+        if not products:
+            print(f"   ⚠ No products found for '{name}'")
+            return False
+        
+        print(f"   📊 {len(products)} products scraped, preference: {preference}")
+        
+        # Use AI to choose the best product
+        try:
+            from ai.openrouter import choose_product
+            print(f"   🤖 Asking AI to choose...")
+            selected_index = choose_product(products, name, preference)
+            print(f"   ✅ AI chose: #{selected_index + 1} - {products[selected_index]['name']}")
+        except Exception as e:
+            print(f"   ⚠ AI selection failed: {e}")
+            print(f"   ⚠ Falling back to first product")
+            selected_index = 0
+        
+        # Click the selected product's counter button
+        return self.add_product_by_index(selected_index, quantity)
+
+    def add_product_by_index(self, index: int, quantity: int = 1) -> bool:
+        """
+        Add a product at specific index to cart.
+        
+        Args:
+            index: 0-based index of the product
+            quantity: How many to add
+        """
+        try:
+            print(f"   🛒 Adding product at index {index}...")
+            
+            # Each product has a counter button following the Show Product button
+            # Structure is: [ShowProduct0, Counter0, ShowProduct1, Counter1, ...]
+            counter_buttons = self.page.locator("button[aria-label='counter']")
+            total_counters = counter_buttons.count()
+            print(f"   🔢 Found {total_counters} counter buttons")
+            
+            if total_counters == 0:
+                print(f"   ❌ No counter buttons found!")
+                return False
+            
+            if index >= total_counters:
+                print(f"   ⚠ Index {index} out of range (only {total_counters} buttons), using 0")
+                index = 0
+            
+            # Find the counter button for the product at index
+            counter_btn = counter_buttons.nth(index)
+            
+            if counter_btn.is_visible(timeout=3000):
+                counter_btn.click()
+                print(f"   ✓ Clicked counter button at index {index}")
+                time.sleep(0.5)
+                
+                # Add more if quantity > 1
+                for i in range(1, quantity):
+                    time.sleep(0.3)
+                    # After first add, click the plus button (second counter)
+                    plus_btn = self.page.locator("button[aria-label='counter']").nth(1)
+                    if plus_btn.is_visible(timeout=2000):
+                        plus_btn.click()
+                        print(f"   ✓ Quantity increased to {i + 1}")
+                
+                return True
+            else:
+                print(f"   ⚠ Counter button not visible at index {index}")
+                return False
+                
+        except Exception as e:
+            print(f"   ❌ Failed to add product at index {index}: {e}")
+            return False
+
     def add_first_product_to_cart(self) -> bool:
         """
         Add the first visible product to cart.

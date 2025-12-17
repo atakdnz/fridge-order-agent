@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SiparisAgent - Fridge Order Test</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🧊 SiparisAgent</h1>
+            <p>Fridge Detection & Auto-Order Test</p>
+        </header>
+
+        <!-- Upload Zone -->
+        <div id="upload-zone" class="upload-zone">
+            <div class="upload-content">
+                <span class="upload-icon">📷</span>
+                <h3>Drop fridge image here</h3>
+                <p>or click to select • paste from clipboard</p>
+                <input type="file" id="file-input" accept="image/*" hidden>
+            </div>
+        </div>
+
+        <!-- Threshold Slider -->
+        <div class="threshold-control">
+            <label for="threshold">Detection Confidence: <span id="threshold-value">50%</span></label>
+            <input type="range" id="threshold" min="10" max="90" value="50">
+        </div>
+
+        <!-- AI Selection Toggle -->
+        <div class="ai-control">
+            <label class="toggle-label">
+                <input type="checkbox" id="use-ai" checked>
+                <span class="toggle-slider"></span>
+                🤖 AI Product Selection
+            </label>
+            <select id="preference">
+                <option value="smart">🧠 Smart (AI decides)</option>
+                <option value="cheapest">Cheapest</option>
+                <option value="cheapest per unit">Cheapest per unit</option>
+                <option value="organic or natural">Organic/Natural</option>
+                <option value="popular brand">Popular brand</option>
+            </select>
+        </div>
+
+        <!-- Custom Instructions (always visible) -->
+        <div id="custom-instructions-wrapper" class="custom-instructions">
+            <label for="custom-instructions">📝 Additional Instructions (optional):</label>
+            <textarea id="custom-instructions"
+                placeholder="e.g., I prefer Pınar or Sütaş brand, avoid products with additives, choose larger sizes..."></textarea>
+        </div>
+
+        <!-- Preview -->
+        <div id="preview-section" class="preview-section hidden">
+            <img id="preview-image" src="" alt="Fridge preview">
+            <button id="analyze-btn" class="btn btn-primary">🔍 Analyze Fridge</button>
+        </div>
+
+        <!-- Results -->
+        <div id="results-section" class="results-section hidden">
+            <div class="results-grid">
+                <div class="result-card detected">
+                    <h3>✅ Detected Items</h3>
+                    <ul id="detected-list"></ul>
+                </div>
+                <div class="result-card missing">
+                    <h3>❌ Missing Items</h3>
+                    <ul id="missing-list"></ul>
+                </div>
+            </div>
+
+            <button id="order-btn" class="btn btn-order">🛒 Order Missing Items</button>
+        </div>
+
+        <!-- Status -->
+        <div id="status" class="status hidden"></div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>🛒 Confirm Order</h2>
+            <p>Order the following items on Getir?</p>
+            <ul id="modal-items"></ul>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+                <button id="modal-confirm" class="btn btn-primary">Order Now</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
