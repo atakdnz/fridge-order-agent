@@ -205,6 +205,61 @@ header p {
     color: #666;
 }
 
+/* Provider Selection */
+.provider-control {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.provider-control > label {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+}
+
+.provider-options {
+    display: flex;
+    gap: 1rem;
+}
+
+.provider-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid #444;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.provider-option:hover {
+    border-color: #5865f2;
+    background: rgba(88, 101, 242, 0.1);
+}
+
+.provider-option input[type="radio"] {
+    display: none;
+}
+
+.provider-option input[type="radio"]:checked + .provider-icon {
+    transform: scale(1.2);
+}
+
+.provider-option:has(input:checked) {
+    border-color: #5865f2;
+    background: rgba(88, 101, 242, 0.2);
+}
+
+.provider-icon {
+    font-size: 1.5rem;
+    transition: transform 0.2s;
+}
+
 .preview-section {
     margin-top: 2rem;
     text-align: center;

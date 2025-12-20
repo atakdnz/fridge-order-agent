@@ -15,9 +15,11 @@
 |-----------|------|-------------|
 | **Server** | `server.py` | Flask web server with REST API |
 | **Detector** | `detection/detector.py` | YOLO-based fridge content detection |
-| **Getir Client** | `browser/getir_client.py` | Selenium browser automation for Getir |
+| **Getir Client** | `browser/getir_client.py` | Playwright browser automation for Getir |
+| **Migros Client** | `browser/migros_client.py` | Playwright browser automation for Migros |
 | **LLM Module** | `ai/openrouter.py` | OpenRouter API for product selection |
 | **Database** | `db/database.py` | SQLite for history and preferences |
+| **Settings** | `config/settings.py` | App configuration (URLs, paths, etc.) |
 | **Frontend** | `static/index.html`, `app.js`, `style.css` | Web UI |
 
 ### Database Schema (`data/fridge.db`)
@@ -34,7 +36,8 @@ CREATE TABLE fridge_history (
 CREATE TABLE preferences (
     id INTEGER PRIMARY KEY,
     custom_instructions TEXT,
-    default_mode TEXT
+    default_mode TEXT,
+    preferred_provider TEXT DEFAULT 'getir'  -- 'getir' or 'migros'
 );
 ```
 
@@ -54,9 +57,17 @@ CREATE TABLE preferences (
 - Falls back to first product if LLM fails
 
 ### 3. Getir Integration
-- Browser automation with Selenium
+- Browser automation with Playwright
 - Product search, scraping, and cart addition
 - Smart product selection via LLM
+
+### 3b. Migros Integration
+- Browser automation with Playwright (same pattern as Getir)
+- Product search at migros.com.tr
+- Session persistence for login state
+- Handles cookie popups and delivery method selection
+- Provider selection UI in frontend (radio buttons)
+- Preference saved to database and localStorage
 
 ### 4. History System
 - Save fridge detections with custom dates
@@ -154,6 +165,8 @@ python server.py
 - History analysis only suggests items that are completely missing from current fridge state
 - Thinking model support exists but Llama is used for reliability
 - Debug logging in terminal shows LLM prompts and responses
+- Migros requires manual login first (session saved to `.auth/migros_session.json`)
+- Provider preference persists across page reloads (stored in DB + localStorage)
 
 ---
 

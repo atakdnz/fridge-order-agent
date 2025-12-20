@@ -43,10 +43,16 @@ def init_db():
         )
     """)
     
+    # Check if preferred_provider column exists, add if not (migration)
+    cursor.execute("PRAGMA table_info(preferences)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'preferred_provider' not in columns:
+        cursor.execute("ALTER TABLE preferences ADD COLUMN preferred_provider TEXT DEFAULT 'getir'")
+
     # Insert default preferences if not exists
     cursor.execute("""
-        INSERT OR IGNORE INTO preferences (id, custom_instructions, default_mode)
-        VALUES (1, '', 'smart')
+        INSERT OR IGNORE INTO preferences (id, custom_instructions, default_mode, preferred_provider)
+        VALUES (1, '', 'smart', 'getir')
     """)
     
     conn.commit()
@@ -151,42 +157,60 @@ def get_preferences() -> dict:
     """Get user preferences."""
     conn = get_connection()
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT custom_instructions, default_mode FROM preferences WHERE id = 1")
+
+    cursor.execute("SELECT custom_instructions, default_mode, preferred_provider FROM preferences WHERE id = 1")
     row = cursor.fetchone()
     conn.close()
-    
+
     if row:
         return {
             "custom_instructions": row["custom_instructions"] or "",
-            "default_mode": row["default_mode"] or "smart"
+            "default_mode": row["default_mode"] or "smart",
+            "preferred_provider": row["preferred_provider"] or "getir"
         }
-    return {"custom_instructions": "", "default_mode": "smart"}
+    return {"custom_instructions": "", "default_mode": "smart", "preferred_provider": "getir"}
 
 
-def set_preferences(custom_instructions: str = None, default_mode: str = None) -> None:
+def get_preferred_provider() -> str:
+    """Get the preferred ordering provider ('getir' or 'migros')."""
+    prefs = get_preferences()
+    return prefs.get("preferred_provider", "getir")
+
+
+def set_preferred_provider(provider: str) -> None:
+    """Set the preferred ordering provider."""
+    if provider not in ("getir", "migros"):
+        raise ValueError("Provider must be 'getir' or 'migros'")
+    set_preferences(preferred_provider=provider)
+
+
+def set_preferences(custom_instructions: str = None, default_mode: str = None, preferred_provider: str = None) -> None:
     """Update user preferences."""
     conn = get_connection()
     cursor = conn.cursor()
-    
+
     updates = []
     values = []
-    
+
     if custom_instructions is not None:
         updates.append("custom_instructions = ?")
         values.append(custom_instructions)
-    
+
     if default_mode is not None:
         updates.append("default_mode = ?")
         values.append(default_mode)
-    
+
+    if preferred_provider is not None:
+        updates.append("preferred_provider = ?")
+        values.append(preferred_provider)
+
     if updates:
         cursor.execute(
             f"UPDATE preferences SET {', '.join(updates)} WHERE id = 1",
             values
         )
         conn.commit()
-    
+
     conn.close()
 
 

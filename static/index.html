@@ -59,6 +59,23 @@
                 placeholder="e.g., I prefer Pınar or Sütaş brand, avoid products with additives, choose larger sizes..."></textarea>
         </div>
 
+        <!-- Provider Selection -->
+        <div class="provider-control">
+            <label data-i18n="provider_label">🏪 Order From:</label>
+            <div class="provider-options">
+                <label class="provider-option">
+                    <input type="radio" name="provider" value="getir" checked>
+                    <span class="provider-icon">🚴</span>
+                    <span>Getir</span>
+                </label>
+                <label class="provider-option">
+                    <input type="radio" name="provider" value="migros">
+                    <span class="provider-icon">🛒</span>
+                    <span>Migros</span>
+                </label>
+            </div>
+        </div>
+
         <!-- Preview -->
         <div id="preview-section" class="preview-section hidden">
             <img id="preview-image" src="" alt="Fridge preview">
@@ -127,7 +144,7 @@
     <div id="modal" class="modal hidden">
         <div class="modal-content">
             <h2 data-i18n="confirm_order">🛒 Confirm Order</h2>
-            <p data-i18n="confirm_text">Order the following items on Getir?</p>
+            <p id="modal-confirm-text" data-i18n="confirm_text">Order the following items on Getir?</p>
             <ul id="modal-items"></ul>
             <div class="modal-actions">
                 <button id="modal-cancel" class="btn btn-secondary" data-i18n="cancel">Cancel</button>

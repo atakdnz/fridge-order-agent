@@ -29,6 +29,8 @@ const suggestionsList = document.getElementById('suggestions-list');
 const orderSuggestionsBtn = document.getElementById('order-suggestions-btn');
 const aiThinkingContent = document.getElementById('ai-thinking-content');
 const aiThinkingDetails = document.getElementById('ai-thinking-details');
+const providerRadios = document.querySelectorAll('input[name="provider"]');
+const modalConfirmText = document.getElementById('modal-confirm-text');
 
 // State
 let currentImage = null;
@@ -36,6 +38,7 @@ let missingProducts = [];
 let lastDetectedItems = {};  // Raw detection results for saving to history
 let aiSuggestedItems = [];   // AI suggested items to order
 let itemTranslations = {};  // Class name -> Turkish translations
+let currentProvider = 'getir';  // Current ordering provider
 
 // Set default date to today
 historyDateInput.valueAsDate = new Date();
@@ -60,12 +63,51 @@ async function loadPreferences() {
         const data = await response.json();
         if (data.success && data.preferences) {
             customInstructions.value = data.preferences.custom_instructions || '';
-            // Could also load default_mode here if needed
+            // Load provider preference
+            currentProvider = data.preferences.preferred_provider || 'getir';
+            setProviderRadio(currentProvider);
         }
     } catch (error) {
         console.error('Failed to load preferences:', error);
     }
 }
+
+// Set the provider radio button
+function setProviderRadio(provider) {
+    providerRadios.forEach(radio => {
+        radio.checked = (radio.value === provider);
+    });
+}
+
+// Get the selected provider
+function getSelectedProvider() {
+    for (const radio of providerRadios) {
+        if (radio.checked) return radio.value;
+    }
+    return 'getir';
+}
+
+// Save provider preference
+async function saveProviderPreference(provider) {
+    try {
+        await fetch('/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preferred_provider: provider })
+        });
+        localStorage.setItem('siparisagent_provider', provider);
+    } catch (error) {
+        console.error('Failed to save provider preference:', error);
+    }
+}
+
+// Provider selection change handler
+providerRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+        currentProvider = radio.value;
+        saveProviderPreference(currentProvider);
+    });
+});
 
 // Save preferences when custom instructions changes
 customInstructions.addEventListener('blur', async () => {
@@ -202,6 +244,17 @@ function displayResults(data) {
     resultsSection.classList.remove('hidden');
 }
 
+// Update modal confirmation text based on provider
+function updateModalText() {
+    const provider = getSelectedProvider();
+    const providerName = provider === 'migros' ? 'Migros' : 'Getir';
+    if (currentLang === 'tr') {
+        modalConfirmText.textContent = `Aşağıdaki ürünler ${providerName}'den sipariş edilsin mi?`;
+    } else {
+        modalConfirmText.textContent = `Order the following items on ${providerName}?`;
+    }
+}
+
 // Order button - show confirmation modal
 orderBtn.addEventListener('click', () => {
     modalItems.innerHTML = '';
@@ -210,6 +263,7 @@ orderBtn.addEventListener('click', () => {
         li.textContent = `${item.name} × ${item.quantity}`;
         modalItems.appendChild(li);
     });
+    updateModalText();
     modal.classList.remove('hidden');
 });
 
@@ -438,6 +492,7 @@ orderSuggestionsBtn.addEventListener('click', () => {
         li.textContent = `${item.name} × ${item.quantity}`;
         modalItems.appendChild(li);
     });
+    updateModalText();
     modal.classList.remove('hidden');
 });
 
@@ -456,6 +511,7 @@ const translations = {
         pref_organic: "Organic/Natural",
         pref_brand: "Popular brand",
         custom_label: "📝 Additional Instructions (optional):",
+        provider_label: "🏪 Order From:",
         analyze_btn: "🔍 Analyze Fridge",
         detected_title: "✅ Detected Items",
         missing_title: "❌ Missing Items",
@@ -467,6 +523,7 @@ const translations = {
         clear_history: "🗑️ Clear All History",
         confirm_order: "🛒 Confirm Order",
         confirm_text: "Order the following items on Getir?",
+        confirm_text_migros: "Order the following items on Migros?",
         cancel: "Cancel",
         order_now: "Order Now",
         analyze_history: "🧠 Analyze History with AI",
@@ -500,6 +557,7 @@ const translations = {
         pref_brand: "Popüler marka",
         custom_label: "📝 Ek Talimatlar (isteğe bağlı):",
         custom_placeholder: "örn: Pınar veya Sütaş marka tercih ederim, katkı maddeli ürünlerden kaçın, büyük boy seç...",
+        provider_label: "🏪 Sipariş Ver:",
         analyze_btn: "🔍 Buzdolabını Analiz Et",
         detected_title: "✅ Algılanan Ürünler",
         missing_title: "❌ Eksik Ürünler",
@@ -511,6 +569,7 @@ const translations = {
         clear_history: "🗑️ Tüm Geçmişi Temizle",
         confirm_order: "🛒 Siparişi Onayla",
         confirm_text: "Aşağıdaki ürünler Getir'den sipariş edilsin mi?",
+        confirm_text_migros: "Aşağıdaki ürünler Migros'tan sipariş edilsin mi?",
         cancel: "İptal",
         order_now: "Sipariş Ver",
         analyze_history: "🧠 Geçmişi YZ ile Analiz Et",

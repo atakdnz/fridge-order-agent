@@ -8,9 +8,11 @@ import threading
 from flask import Flask, request, jsonify, send_from_directory
 from detection.detector import FridgeDetector, CLASS_TO_GETIR, EXPECTED_ITEMS
 from browser.getir_client import GetirClient
+from browser.migros_client import MigrosClient
 from db.database import (
     add_history, get_history, delete_history, clear_history,
-    get_preferences, set_preferences, get_history_context
+    get_preferences, set_preferences, get_history_context,
+    get_preferred_provider
 )
 
 app = Flask(__name__, static_folder='static')
@@ -74,21 +76,30 @@ def detect():
 @app.route('/order', methods=['POST'])
 def order():
     """
-    Order the specified products on Getir.
+    Order the specified products on the selected provider (Getir or Migros).
     Runs Playwright in a separate thread.
     """
     data = request.json
     products = data.get('products', [])
-    
+
     if not products:
         return jsonify({'error': 'No products specified'}), 400
-    
+
     use_ai = data.get('use_ai', False)
     preference = data.get('preference', 'cheapest')
-    
+    provider = get_preferred_provider()
+
     def run_order():
         """Run the ordering in background."""
-        client = GetirClient()
+        # Select client based on provider preference
+        if provider == 'migros':
+            client = MigrosClient()
+            provider_name = "Migros"
+        else:
+            client = GetirClient()
+            provider_name = "Getir"
+
+        print(f"🏪 Using {provider_name} for ordering...")
         client.start()
         
         try:
@@ -226,8 +237,13 @@ def preferences_set():
     data = request.json or {}
     custom_instructions = data.get('custom_instructions')
     default_mode = data.get('default_mode')
-    
-    set_preferences(custom_instructions=custom_instructions, default_mode=default_mode)
+    preferred_provider = data.get('preferred_provider')
+
+    set_preferences(
+        custom_instructions=custom_instructions,
+        default_mode=default_mode,
+        preferred_provider=preferred_provider
+    )
     return jsonify({'success': True})
 
 
