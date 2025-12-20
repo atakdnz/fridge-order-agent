@@ -8,6 +8,10 @@ import threading
 from flask import Flask, request, jsonify, send_from_directory
 from detection.detector import FridgeDetector, CLASS_TO_GETIR, EXPECTED_ITEMS
 from browser.getir_client import GetirClient
+from db.database import (
+    add_history, get_history, delete_history, clear_history,
+    get_preferences, set_preferences, get_history_context
+)
 
 app = Flask(__name__, static_folder='static')
 
@@ -127,6 +131,43 @@ def order():
     })
 
 
+@app.route('/history', methods=['GET'])
+def history_list():
+    """Get all fridge history records."""
+    records = get_history(limit=50)
+    return jsonify({'success': True, 'history': records})
+
+
+@app.route('/history', methods=['POST'])
+def history_add():
+    """Add a detection to history with custom date."""
+    data = request.json
+    date = data.get('date')  # YYYY-MM-DD
+    items = data.get('items', {})
+    
+    if not date or not items:
+        return jsonify({'error': 'Date and items required'}), 400
+    
+    record_id = add_history(date, items)
+    return jsonify({'success': True, 'id': record_id})
+
+
+@app.route('/history/<int:record_id>', methods=['DELETE'])
+def history_delete(record_id):
+    """Delete a history record."""
+    deleted = delete_history(record_id)
+    if deleted:
+        return jsonify({'success': True})
+    return jsonify({'error': 'Record not found'}), 404
+
+
+@app.route('/history/clear', methods=['DELETE'])
+def history_clear():
+    """Delete all history records."""
+    count = clear_history()
+    return jsonify({'success': True, 'deleted': count})
+
+
 @app.route('/expected', methods=['GET'])
 def get_expected():
     """Get the expected items configuration."""
@@ -135,7 +176,72 @@ def get_expected():
     })
 
 
+@app.route('/analyze-history', methods=['POST'])
+def analyze_history_route():
+    """Use AI to analyze fridge history and suggest what to order."""
+    try:
+        from ai.openrouter import analyze_history
+        
+        # Get history context
+        history_context = get_history_context(limit=10)
+        
+        if not history_context or history_context == "No previous fridge history available.":
+            return jsonify({'success': False, 'error': 'No history to analyze'}), 400
+        
+        # Call AI to analyze (returns dict with thinking and suggestions)
+        print("🧠 Analyzing fridge history with AI...")
+        result = analyze_history(history_context, CLASS_TO_GETIR)
+        
+        suggestions = result.get("suggestions", [])
+        thinking = result.get("thinking", "")
+        
+        if not suggestions:
+            return jsonify({
+                'success': False, 
+                'error': 'AI could not suggest items',
+                'thinking': thinking
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'suggestions': suggestions,
+            'thinking': thinking
+        })
+        
+    except Exception as e:
+        print(f"❌ Analysis error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/preferences', methods=['GET'])
+def preferences_get():
+    """Get user preferences (custom instructions, etc.)."""
+    prefs = get_preferences()
+    return jsonify({'success': True, 'preferences': prefs})
+
+
+@app.route('/preferences', methods=['POST'])
+def preferences_set():
+    """Update user preferences."""
+    data = request.json or {}
+    custom_instructions = data.get('custom_instructions')
+    default_mode = data.get('default_mode')
+    
+    set_preferences(custom_instructions=custom_instructions, default_mode=default_mode)
+    return jsonify({'success': True})
+
+
+@app.route('/translations', methods=['GET'])
+def get_translations():
+    """Get item name translations (class name -> Turkish name)."""
+    return jsonify({
+        'success': True,
+        'translations': CLASS_TO_GETIR
+    })
+
+
 if __name__ == '__main__':
     print("\n🚀 Starting SiparisAgent Test Server")
     print("   Open http://localhost:5000 in your browser\n")
     app.run(debug=True, port=5000)
+

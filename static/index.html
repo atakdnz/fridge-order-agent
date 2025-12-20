@@ -12,22 +12,27 @@
     <div class="container">
         <header>
             <h1>🧊 SiparisAgent</h1>
-            <p>Fridge Detection & Auto-Order Test</p>
+            <p data-i18n="subtitle">Fridge Detection & Auto-Order Test</p>
+            <div class="lang-picker">
+                <button class="lang-btn active" data-lang="en">🇺🇸 EN</button>
+                <button class="lang-btn" data-lang="tr">🇹🇷 TR</button>
+            </div>
         </header>
 
         <!-- Upload Zone -->
         <div id="upload-zone" class="upload-zone">
             <div class="upload-content">
                 <span class="upload-icon">📷</span>
-                <h3>Drop fridge image here</h3>
-                <p>or click to select • paste from clipboard</p>
+                <h3 data-i18n="drop_image">Drop fridge image here</h3>
+                <p data-i18n="click_select">or click to select • paste from clipboard</p>
                 <input type="file" id="file-input" accept="image/*" hidden>
             </div>
         </div>
 
         <!-- Threshold Slider -->
         <div class="threshold-control">
-            <label for="threshold">Detection Confidence: <span id="threshold-value">50%</span></label>
+            <label for="threshold"><span data-i18n="confidence">Detection Confidence:</span> <span
+                    id="threshold-value">50%</span></label>
             <input type="range" id="threshold" min="10" max="90" value="50">
         </div>
 
@@ -36,20 +41,20 @@
             <label class="toggle-label">
                 <input type="checkbox" id="use-ai" checked>
                 <span class="toggle-slider"></span>
-                🤖 AI Product Selection
+                <span data-i18n="ai_selection">🤖 AI Product Selection</span>
             </label>
             <select id="preference">
-                <option value="smart">🧠 Smart (AI decides)</option>
-                <option value="cheapest">Cheapest</option>
-                <option value="cheapest per unit">Cheapest per unit</option>
-                <option value="organic or natural">Organic/Natural</option>
-                <option value="popular brand">Popular brand</option>
+                <option value="smart" data-i18n="pref_smart">🧠 Smart (AI decides)</option>
+                <option value="cheapest" data-i18n="pref_cheapest">Cheapest</option>
+                <option value="cheapest per unit" data-i18n="pref_unit">Cheapest per unit</option>
+                <option value="organic or natural" data-i18n="pref_organic">Organic/Natural</option>
+                <option value="popular brand" data-i18n="pref_brand">Popular brand</option>
             </select>
         </div>
 
         <!-- Custom Instructions (always visible) -->
         <div id="custom-instructions-wrapper" class="custom-instructions">
-            <label for="custom-instructions">📝 Additional Instructions (optional):</label>
+            <label for="custom-instructions" data-i18n="custom_label">📝 Additional Instructions (optional):</label>
             <textarea id="custom-instructions"
                 placeholder="e.g., I prefer Pınar or Sütaş brand, avoid products with additives, choose larger sizes..."></textarea>
         </div>
@@ -57,23 +62,61 @@
         <!-- Preview -->
         <div id="preview-section" class="preview-section hidden">
             <img id="preview-image" src="" alt="Fridge preview">
-            <button id="analyze-btn" class="btn btn-primary">🔍 Analyze Fridge</button>
+            <button id="analyze-btn" class="btn btn-primary" data-i18n="analyze_btn">🔍 Analyze Fridge</button>
         </div>
 
         <!-- Results -->
         <div id="results-section" class="results-section hidden">
             <div class="results-grid">
                 <div class="result-card detected">
-                    <h3>✅ Detected Items</h3>
+                    <h3 data-i18n="detected_title">✅ Detected Items</h3>
                     <ul id="detected-list"></ul>
                 </div>
                 <div class="result-card missing">
-                    <h3>❌ Missing Items</h3>
+                    <h3 data-i18n="missing_title">❌ Missing Items</h3>
                     <ul id="missing-list"></ul>
                 </div>
             </div>
 
-            <button id="order-btn" class="btn btn-order">🛒 Order Missing Items</button>
+            <!-- Save to History (for testing with custom dates) -->
+            <div class="save-history-section">
+                <label for="history-date" data-i18n="history_date_label">📅 Date for history:</label>
+                <input type="date" id="history-date">
+                <button id="save-history-btn" class="btn btn-secondary" data-i18n="save_history">💾 Save to
+                    History</button>
+            </div>
+
+            <button id="order-btn" class="btn btn-order" data-i18n="order_btn">🛒 Order Missing Items</button>
+        </div>
+
+        <!-- History Panel -->
+        <div class="history-section">
+            <h2 data-i18n="history_title">📊 Fridge History</h2>
+            <div id="history-list" class="history-list">
+                <p class="loading" data-i18n="loading_history">Loading history...</p>
+            </div>
+
+            <div class="history-actions">
+                <button id="analyze-history-btn" class="btn btn-primary" data-i18n="analyze_history">🧠 Analyze History
+                    with AI</button>
+                <button id="clear-history-btn" class="btn btn-secondary" data-i18n="clear_history">🗑️ Clear All
+                    History</button>
+            </div>
+
+            <!-- AI Suggestions -->
+            <div id="ai-suggestions" class="ai-suggestions hidden">
+                <h3 data-i18n="ai_suggestions_title">🤖 AI Suggestions</h3>
+
+                <!-- AI Thinking Process -->
+                <details id="ai-thinking-details" class="ai-thinking">
+                    <summary data-i18n="ai_thinking_title">🧠 AI Thinking Process</summary>
+                    <div id="ai-thinking-content" class="ai-thinking-content"></div>
+                </details>
+
+                <ul id="suggestions-list"></ul>
+                <button id="order-suggestions-btn" class="btn btn-order" data-i18n="order_suggestions">🛒 Order These
+                    Items</button>
+            </div>
         </div>
 
         <!-- Status -->
@@ -83,12 +126,12 @@
     <!-- Confirmation Modal -->
     <div id="modal" class="modal hidden">
         <div class="modal-content">
-            <h2>🛒 Confirm Order</h2>
-            <p>Order the following items on Getir?</p>
+            <h2 data-i18n="confirm_order">🛒 Confirm Order</h2>
+            <p data-i18n="confirm_text">Order the following items on Getir?</p>
             <ul id="modal-items"></ul>
             <div class="modal-actions">
-                <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
-                <button id="modal-confirm" class="btn btn-primary">Order Now</button>
+                <button id="modal-cancel" class="btn btn-secondary" data-i18n="cancel">Cancel</button>
+                <button id="modal-confirm" class="btn btn-primary" data-i18n="order_now">Order Now</button>
             </div>
         </div>
     </div>

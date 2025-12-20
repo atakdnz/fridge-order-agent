@@ -18,6 +18,7 @@ build/
 
 # Playwright
 .auth/
+data/
 
 # IDE
 .vscode/

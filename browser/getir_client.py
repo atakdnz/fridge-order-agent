@@ -288,8 +288,14 @@ class GetirClient:
         # Use AI to choose the best product
         try:
             from ai.openrouter import choose_product
+            from db.database import get_history_context
+            
+            # Get fridge history context for smarter decisions
+            history_context = get_history_context(limit=10)
+            print(f"   📜 History available: {len(history_context) > 0}")
+            
             print(f"   🤖 Asking AI to choose...")
-            selected_index = choose_product(products, name, preference)
+            selected_index = choose_product(products, name, preference, history_context)
             print(f"   ✅ AI chose: #{selected_index + 1} - {products[selected_index]['name']}")
         except Exception as e:
             print(f"   ⚠ AI selection failed: {e}")
