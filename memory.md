@@ -17,6 +17,7 @@
 | **Detector** | `detection/detector.py` | YOLO-based fridge content detection |
 | **Getir Client** | `browser/getir_client.py` | Playwright browser automation for Getir |
 | **Migros Client** | `browser/migros_client.py` | Playwright browser automation for Migros |
+| **Akbal Client** | `browser/akbal_client.py` | Playwright browser automation for Akbal Market |
 | **LLM Module** | `ai/openrouter.py` | OpenRouter API for product selection |
 | **Database** | `db/database.py` | SQLite for history and preferences |
 | **Settings** | `config/settings.py` | App configuration (URLs, paths, etc.) |
@@ -37,7 +38,7 @@ CREATE TABLE preferences (
     id INTEGER PRIMARY KEY,
     custom_instructions TEXT,
     default_mode TEXT,
-    preferred_provider TEXT DEFAULT 'getir'  -- 'getir' or 'migros'
+    preferred_provider TEXT DEFAULT 'getir'  -- 'getir', 'migros', or 'akbal'
 );
 ```
 
@@ -68,6 +69,12 @@ CREATE TABLE preferences (
 - Handles cookie popups and delivery method selection
 - Provider selection UI in frontend (radio buttons)
 - Preference saved to database and localStorage
+
+### 3c. Akbal Market Integration
+- Browser automation with Playwright
+- Product search at akbalmarket.com (Magento 2 store)
+- No login required - cart works without authentication
+- Simpler flow: search → add to cart → checkout
 
 ### 4. History System
 - Save fridge detections with custom dates
@@ -166,6 +173,7 @@ python server.py
 - Thinking model support exists but Llama is used for reliability
 - Debug logging in terminal shows LLM prompts and responses
 - Migros requires manual login first (session saved to `.auth/migros_session.json`)
+- Akbal Market does not require login - cart works without authentication
 - Provider preference persists across page reloads (stored in DB + localStorage)
 
 ---

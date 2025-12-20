@@ -179,8 +179,8 @@ def get_preferred_provider() -> str:
 
 def set_preferred_provider(provider: str) -> None:
     """Set the preferred ordering provider."""
-    if provider not in ("getir", "migros"):
-        raise ValueError("Provider must be 'getir' or 'migros'")
+    if provider not in ("getir", "migros", "akbal"):
+        raise ValueError("Provider must be 'getir', 'migros', or 'akbal'")
     set_preferences(preferred_provider=provider)
 
 

@@ -9,6 +9,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from detection.detector import FridgeDetector, CLASS_TO_GETIR, EXPECTED_ITEMS
 from browser.getir_client import GetirClient
 from browser.migros_client import MigrosClient
+from browser.akbal_client import AkbalClient
 from db.database import (
     add_history, get_history, delete_history, clear_history,
     get_preferences, set_preferences, get_history_context,
@@ -95,6 +96,9 @@ def order():
         if provider == 'migros':
             client = MigrosClient()
             provider_name = "Migros"
+        elif provider == 'akbal':
+            client = AkbalClient()
+            provider_name = "Akbal Market"
         else:
             client = GetirClient()
             provider_name = "Getir"

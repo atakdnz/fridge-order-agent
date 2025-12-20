@@ -23,6 +23,10 @@ GETIR_SEARCH_URL = f"{GETIR_BASE_URL}/arama"
 MIGROS_BASE_URL = "https://www.migros.com.tr"
 MIGROS_SEARCH_URL = f"{MIGROS_BASE_URL}/arama"
 
+# Akbal Market URLs
+AKBAL_BASE_URL = "https://www.akbalmarket.com"
+AKBAL_SEARCH_URL = f"{AKBAL_BASE_URL}/catalogsearch/result/"
+
 # Browser settings
 HEADLESS = os.getenv("HEADLESS", "false").lower() == "true"
 TIMEOUT = int(os.getenv("TIMEOUT", "30")) * 1000  # Convert to milliseconds

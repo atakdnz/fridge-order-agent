@@ -247,7 +247,12 @@ function displayResults(data) {
 // Update modal confirmation text based on provider
 function updateModalText() {
     const provider = getSelectedProvider();
-    const providerName = provider === 'migros' ? 'Migros' : 'Getir';
+    const providerNames = {
+        'getir': 'Getir',
+        'migros': 'Migros',
+        'akbal': 'Akbal Market'
+    };
+    const providerName = providerNames[provider] || 'Getir';
     if (currentLang === 'tr') {
         modalConfirmText.textContent = `Aşağıdaki ürünler ${providerName}'den sipariş edilsin mi?`;
     } else {
