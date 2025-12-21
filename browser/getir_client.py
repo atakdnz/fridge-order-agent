@@ -308,50 +308,78 @@ class GetirClient:
     def add_product_by_index(self, index: int, quantity: int = 1) -> bool:
         """
         Add a product at specific index to cart.
-        
+
         Args:
             index: 0-based index of the product
             quantity: How many to add
         """
         try:
             print(f"   🛒 Adding product at index {index}...")
-            
+
             # Each product has a counter button following the Show Product button
             # Structure is: [ShowProduct0, Counter0, ShowProduct1, Counter1, ...]
             counter_buttons = self.page.locator("button[aria-label='counter']")
             total_counters = counter_buttons.count()
             print(f"   🔢 Found {total_counters} counter buttons")
-            
+
             if total_counters == 0:
                 print(f"   ❌ No counter buttons found!")
                 return False
-            
+
             if index >= total_counters:
                 print(f"   ⚠ Index {index} out of range (only {total_counters} buttons), using 0")
                 index = 0
-            
+
             # Find the counter button for the product at index
             counter_btn = counter_buttons.nth(index)
-            
-            if counter_btn.is_visible(timeout=3000):
-                counter_btn.click()
-                print(f"   ✓ Clicked counter button at index {index}")
-                time.sleep(0.5)
-                
-                # Add more if quantity > 1
-                for i in range(1, quantity):
-                    time.sleep(0.3)
-                    # After first add, click the plus button (second counter)
-                    plus_btn = self.page.locator("button[aria-label='counter']").nth(1)
-                    if plus_btn.is_visible(timeout=2000):
-                        plus_btn.click()
-                        print(f"   ✓ Quantity increased to {i + 1}")
-                
-                return True
-            else:
+
+            if not counter_btn.is_visible(timeout=3000):
                 print(f"   ⚠ Counter button not visible at index {index}")
                 return False
-                
+
+            counter_btn.click()
+            print(f"   ✓ Added to cart (qty: 1)")
+
+            if quantity <= 1:
+                time.sleep(0.5)
+                return True
+
+            # Wait for quantity controls to appear
+            time.sleep(1.0)
+
+            # For additional quantity, find the PLUS button for THIS specific product
+            # Strategy: Get the product button at index, find its parent container,
+            # then get the LAST counter button in that container (the plus button)
+            for i in range(1, quantity):
+                time.sleep(0.5)
+
+                try:
+                    # Get the product button at our index
+                    product_btn = self.page.locator("button[aria-label='Show Product']").nth(index)
+
+                    # Navigate up to find the ancestor that contains counter buttons
+                    # This scopes our search to THIS product's controls only
+                    parent = product_btn.locator("xpath=./ancestor::*[.//button[@aria-label='counter']][1]")
+
+                    # Get counter buttons within this specific product's container
+                    product_counters = parent.locator("button[aria-label='counter']")
+                    counter_count = product_counters.count()
+
+                    if counter_count >= 2:
+                        # After adding, structure is [minus, plus] - last button is plus
+                        plus_btn = product_counters.last
+                        plus_btn.click()
+                        print(f"   ✓ Quantity increased to {i + 1}")
+                    else:
+                        print(f"   ⚠ Plus button not found (only {counter_count} counter(s))")
+                        return False
+
+                except Exception as e:
+                    print(f"   ⚠ Error finding plus button: {e}")
+                    return False
+
+            return True
+
         except Exception as e:
             print(f"   ❌ Failed to add product at index {index}: {e}")
             return False
@@ -402,29 +430,46 @@ class GetirClient:
         """
         if not self.search_product(name):
             return False
-        
+
         # First add - click the first counter button
         if not self.add_first_product_to_cart():
             return False
-        
-        # For quantity > 1, we need to click the SECOND counter button (plus)
-        # because after first add, buttons become [minus, plus]
+
+        if quantity <= 1:
+            return True
+
+        # Wait for quantity controls to appear
+        time.sleep(1.0)
+
+        # For quantity > 1, find the PLUS button for the FIRST product
+        # Strategy: Get first product button, find its parent container,
+        # then get the LAST counter button (the plus button)
         for i in range(1, quantity):
-            time.sleep(0.3)  # Small delay between clicks
+            time.sleep(0.5)
             try:
-                counter_buttons = self.page.locator("button[aria-label='counter']")
-                # After adding, there are 2 buttons: first=minus, second=plus
-                # We want to click the second one (plus)
-                if counter_buttons.count() >= 2:
-                    counter_buttons.nth(1).click()  # Click the plus (second button)
+                # Get the first product button
+                product_btn = self.page.locator("button[aria-label='Show Product']").first
+
+                # Navigate up to find the ancestor that contains counter buttons
+                parent = product_btn.locator("xpath=./ancestor::*[.//button[@aria-label='counter']][1]")
+
+                # Get counter buttons within this specific product's container
+                product_counters = parent.locator("button[aria-label='counter']")
+                counter_count = product_counters.count()
+
+                if counter_count >= 2:
+                    # After adding, structure is [minus, plus] - last button is plus
+                    plus_btn = product_counters.last
+                    plus_btn.click()
                     print(f"   ✓ Quantity increased to {i + 1}")
                 else:
-                    # Fallback to first button if structure different
-                    counter_buttons.first.click()
+                    print(f"   ⚠ Plus button not found (only {counter_count} counter(s))")
+                    break
+
             except Exception as e:
                 print(f"   ! Could not increase quantity: {e}")
                 break
-        
+
         return True
 
     def get_cart_count(self) -> int:
