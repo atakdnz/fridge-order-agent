@@ -55,7 +55,7 @@ class FridgeDetector:
         self.class_names = self.model.names
         print(f"   ✓ Model loaded ({len(self.class_names)} classes)")
     
-    def detect(self, image_path: str, confidence: float = 0.5) -> dict[str, int]:
+    def detect(self, image_path: str, confidence: float = 0.5) -> tuple[dict[str, int], list[dict]]:
         """
         Detect products in an image.
         
@@ -64,22 +64,48 @@ class FridgeDetector:
             confidence: Minimum confidence threshold
             
         Returns:
-            Dict mapping class names to counts
+            Tuple of:
+            - Dict mapping class names to counts
+            - List of detection dicts with bounding box info
         """
         print(f"📷 Analyzing image: {image_path}")
         
         results = self.model(image_path, conf=confidence, verbose=False)
         
-        # Count detections per class
+        # Count detections per class and collect bounding boxes
         counts = {}
+        detections = []
+        
         for result in results:
+            # Get original image dimensions for normalization
+            orig_h, orig_w = result.orig_shape
+            
             for box in result.boxes:
                 class_id = int(box.cls[0])
                 class_name = self.class_names[class_id]
+                conf = float(box.conf[0])
+                
+                # Get bounding box coordinates (xyxy format)
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                
                 counts[class_name] = counts.get(class_name, 0) + 1
+                
+                detections.append({
+                    'class': class_name,
+                    'name': CLASS_TO_GETIR.get(class_name, class_name),
+                    'confidence': round(conf, 2),
+                    'bbox': {
+                        'x1': round(x1),
+                        'y1': round(y1),
+                        'x2': round(x2),
+                        'y2': round(y2)
+                    },
+                    'image_width': orig_w,
+                    'image_height': orig_h
+                })
         
         print(f"   ✓ Detected {sum(counts.values())} items: {counts}")
-        return counts
+        return counts, detections
     
     def get_missing_items(self, detected: dict[str, int], expected: dict[str, int] = None) -> list[dict]:
         """

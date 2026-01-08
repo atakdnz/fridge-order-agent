@@ -53,18 +53,19 @@ def detect():
     try:
         detector = get_detector()
         confidence = float(request.form.get('confidence', 0.5))
-        detected = detector.detect(temp_path, confidence=confidence)
-        missing = detector.get_missing_items(detected)
+        detected_counts, detections = detector.detect(temp_path, confidence=confidence)
+        missing = detector.get_missing_items(detected_counts)
         
-        # Format response
+        # Format response - summarized counts
         detected_list = [
             {'name': CLASS_TO_GETIR.get(k, k), 'count': v, 'class': k}
-            for k, v in detected.items()
+            for k, v in detected_counts.items()
         ]
         
         return jsonify({
             'success': True,
             'detected': detected_list,
+            'detections': detections,  # Full bounding box info for canvas
             'missing': missing,
             'expected': {CLASS_TO_GETIR.get(k, k): v for k, v in EXPECTED_ITEMS.items()}
         })
@@ -242,11 +243,13 @@ def preferences_set():
     custom_instructions = data.get('custom_instructions')
     default_mode = data.get('default_mode')
     preferred_provider = data.get('preferred_provider')
+    detection_threshold = data.get('detection_threshold')
 
     set_preferences(
         custom_instructions=custom_instructions,
         default_mode=default_mode,
-        preferred_provider=preferred_provider
+        preferred_provider=preferred_provider,
+        detection_threshold=detection_threshold
     )
     return jsonify({'success': True})
 

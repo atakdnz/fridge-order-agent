@@ -34,6 +34,12 @@
             <label for="threshold"><span data-i18n="confidence">Detection Confidence:</span> <span
                     id="threshold-value">50%</span></label>
             <input type="range" id="threshold" min="10" max="90" value="50">
+
+            <!-- Show Mask/Box Checkbox -->
+            <label class="toggle-label mask-toggle">
+                <input type="checkbox" id="show-masks" checked>
+                <span data-i18n="show_masks">📦 Show Boxes & Labels</span>
+            </label>
         </div>
 
         <!-- AI Selection Toggle -->
@@ -83,20 +89,19 @@
 
         <!-- Preview -->
         <div id="preview-section" class="preview-section hidden">
-            <img id="preview-image" src="" alt="Fridge preview">
+            <div class="preview-container">
+                <img id="preview-image" src="" alt="Fridge preview">
+                <canvas id="annotation-canvas"></canvas>
+            </div>
             <button id="analyze-btn" class="btn btn-primary" data-i18n="analyze_btn">🔍 Analyze Fridge</button>
         </div>
 
         <!-- Results -->
         <div id="results-section" class="results-section hidden">
             <div class="results-grid">
-                <div class="result-card detected">
+                <div class="result-card detected full-width">
                     <h3 data-i18n="detected_title">✅ Detected Items</h3>
                     <ul id="detected-list"></ul>
-                </div>
-                <div class="result-card missing">
-                    <h3 data-i18n="missing_title">❌ Missing Items</h3>
-                    <ul id="missing-list"></ul>
                 </div>
             </div>
 
@@ -107,8 +112,6 @@
                 <button id="save-history-btn" class="btn btn-secondary" data-i18n="save_history">💾 Save to
                     History</button>
             </div>
-
-            <button id="order-btn" class="btn btn-order" data-i18n="order_btn">🛒 Order Missing Items</button>
         </div>
 
         <!-- History Panel -->

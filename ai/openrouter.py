@@ -13,8 +13,9 @@ load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-# Use Llama for reliable responses (free tier)
-DEFAULT_MODEL = "meta-llama/llama-3.1-405b-instruct:free"
+# Use Gemma 3 for reliable responses (free tier)
+# Note: Free models change frequently on OpenRouter. Check https://openrouter.ai/models?q=:free for current options
+DEFAULT_MODEL = "xiaomi/mimo-v2-flash:free"
 
 
 def extract_json_array(text: str) -> str | None:

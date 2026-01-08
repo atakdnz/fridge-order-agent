@@ -6,8 +6,6 @@ const previewImage = document.getElementById('preview-image');
 const analyzeBtn = document.getElementById('analyze-btn');
 const resultsSection = document.getElementById('results-section');
 const detectedList = document.getElementById('detected-list');
-const missingList = document.getElementById('missing-list');
-const orderBtn = document.getElementById('order-btn');
 const status = document.getElementById('status');
 const modal = document.getElementById('modal');
 const modalItems = document.getElementById('modal-items');
@@ -31,14 +29,49 @@ const aiThinkingContent = document.getElementById('ai-thinking-content');
 const aiThinkingDetails = document.getElementById('ai-thinking-details');
 const providerRadios = document.querySelectorAll('input[name="provider"]');
 const modalConfirmText = document.getElementById('modal-confirm-text');
+const annotationCanvas = document.getElementById('annotation-canvas');
+const showMasksCheckbox = document.getElementById('show-masks');
 
 // State
 let currentImage = null;
 let missingProducts = [];
 let lastDetectedItems = {};  // Raw detection results for saving to history
+let lastDetections = [];     // Full detection info with bboxes for canvas
 let aiSuggestedItems = [];   // AI suggested items to order
 let itemTranslations = {};  // Class name -> Turkish translations
 let currentProvider = 'getir';  // Current ordering provider
+
+// Color palette for different classes
+const classColors = {
+    milk: '#3498db',
+    eggs: '#f39c12',
+    cheese: '#f1c40f',
+    yogurt: '#9b59b6',
+    butter: '#e67e22',
+    water_bottle: '#1abc9c',
+    soda: '#e74c3c',
+    juice: '#2ecc71',
+    tomato: '#c0392b',
+    cucumber: '#27ae60',
+    pepper: '#d35400',
+    apple: '#e74c3c',
+    orange: '#f39c12',
+    lemon: '#f1c40f',
+    salami: '#8e44ad',
+    sausage: '#e74c3c',
+    chicken: '#f5cba7',
+    fish: '#5dade2',
+    cake: '#ff69b4',
+    chocolate: '#8b4513',
+    lettuce: '#2ecc71',
+    carrot: '#e67e22',
+    banana: '#f4d03f'
+};
+
+// Get color for a class (with fallback)
+function getClassColor(className) {
+    return classColors[className] || '#5865f2';
+}
 
 // Set default date to today
 historyDateInput.valueAsDate = new Date();
@@ -66,6 +99,12 @@ async function loadPreferences() {
             // Load provider preference
             currentProvider = data.preferences.preferred_provider || 'getir';
             setProviderRadio(currentProvider);
+            // Load threshold preference
+            if (data.preferences.detection_threshold !== undefined) {
+                const thresholdPercent = Math.round(data.preferences.detection_threshold * 100);
+                thresholdSlider.value = thresholdPercent;
+                thresholdValue.textContent = thresholdPercent + '%';
+            }
         }
     } catch (error) {
         console.error('Failed to load preferences:', error);
@@ -122,9 +161,23 @@ customInstructions.addEventListener('blur', async () => {
     }
 });
 
-// Threshold slider
+// Threshold slider - update display and save to database
 thresholdSlider.addEventListener('input', () => {
     thresholdValue.textContent = thresholdSlider.value + '%';
+});
+
+// Save threshold when slider change is complete (mouseup/touchend)
+thresholdSlider.addEventListener('change', async () => {
+    const threshold = thresholdSlider.value / 100;
+    try {
+        await fetch('/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ detection_threshold: threshold })
+        });
+    } catch (error) {
+        console.error('Failed to save threshold:', error);
+    }
 });
 
 // Upload Zone Events
@@ -173,7 +226,99 @@ function handleImage(file) {
     previewSection.classList.remove('hidden');
     resultsSection.classList.add('hidden');
     status.classList.add('hidden');
+    // Clear previous annotations
+    lastDetections = [];
+    clearCanvas();
 }
+
+// Clear the annotation canvas
+function clearCanvas() {
+    const ctx = annotationCanvas.getContext('2d');
+    ctx.clearRect(0, 0, annotationCanvas.width, annotationCanvas.height);
+}
+
+// Draw annotations on canvas
+function drawAnnotations() {
+    if (!lastDetections.length || !showMasksCheckbox.checked) {
+        clearCanvas();
+        return;
+    }
+
+    // Wait for image to load and get its displayed dimensions
+    const imgRect = previewImage.getBoundingClientRect();
+    const displayWidth = previewImage.clientWidth;
+    const displayHeight = previewImage.clientHeight;
+
+    // Set canvas size to match displayed image
+    annotationCanvas.width = displayWidth;
+    annotationCanvas.height = displayHeight;
+
+    const ctx = annotationCanvas.getContext('2d');
+    ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+    // Get original image dimensions from first detection
+    if (!lastDetections[0]) return;
+    const origWidth = lastDetections[0].image_width;
+    const origHeight = lastDetections[0].image_height;
+
+    // Calculate scale factors
+    const scaleX = displayWidth / origWidth;
+    const scaleY = displayHeight / origHeight;
+
+    // Draw each detection
+    lastDetections.forEach(det => {
+        const color = getClassColor(det.class);
+        const bbox = det.bbox;
+
+        // Scale coordinates
+        const x1 = bbox.x1 * scaleX;
+        const y1 = bbox.y1 * scaleY;
+        const x2 = bbox.x2 * scaleX;
+        const y2 = bbox.y2 * scaleY;
+        const width = x2 - x1;
+        const height = y2 - y1;
+
+        // Draw bounding box
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x1, y1, width, height);
+
+        // Draw semi-transparent fill
+        ctx.fillStyle = color + '20';  // 20 = ~12% opacity
+        ctx.fillRect(x1, y1, width, height);
+
+        // Draw label background
+        const label = `${det.name} ${Math.round(det.confidence * 100)}%`;
+        ctx.font = 'bold 12px -apple-system, sans-serif';
+        const textMetrics = ctx.measureText(label);
+        const textWidth = textMetrics.width + 8;
+        const textHeight = 18;
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x1, y1 - textHeight, textWidth, textHeight);
+
+        // Draw label text
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, x1 + 4, y1 - 5);
+    });
+}
+
+// Toggle annotations on checkbox change
+showMasksCheckbox.addEventListener('change', drawAnnotations);
+
+// Redraw when image loads (for proper sizing)
+previewImage.addEventListener('load', () => {
+    if (lastDetections.length > 0) {
+        drawAnnotations();
+    }
+});
+
+// Redraw on window resize
+window.addEventListener('resize', () => {
+    if (lastDetections.length > 0) {
+        drawAnnotations();
+    }
+});
 
 // Analyze button
 analyzeBtn.addEventListener('click', async () => {
@@ -212,6 +357,9 @@ function displayResults(data) {
         lastDetectedItems[item.class || item.name] = item.count;
     });
 
+    // Save full detections for canvas drawing
+    lastDetections = data.detections || [];
+
     // Show detected items
     detectedList.innerHTML = '';
     if (data.detected.length === 0) {
@@ -219,29 +367,19 @@ function displayResults(data) {
     } else {
         data.detected.forEach(item => {
             const li = document.createElement('li');
-            li.textContent = `${item.name} × ${item.count}`;
+            const colorDot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getClassColor(item.class)};margin-right:6px;"></span>`;
+            li.innerHTML = `${colorDot}${item.name} × ${item.count}`;
             detectedList.appendChild(li);
         });
     }
 
-    // Show missing items - Hidden as requested by user since AI handles it
-    // missingList.innerHTML = '';
-    // missingProducts = data.missing;
-
-    if (data.missing.length === 0) {
-        // missingList.innerHTML = '<li>All items present! 🎉</li>';
-        orderBtn.classList.add('hidden');
-    } else {
-        missingProducts = data.missing;
-        // data.missing.forEach(item => {
-        //     const li = document.createElement('li');
-        //     li.textContent = `${item.name} × ${item.quantity}`;
-        //     missingList.appendChild(li);
-        // });
-        orderBtn.classList.remove('hidden');
-    }
+    // Set missing products for ordering (handled by AI now)
+    missingProducts = data.missing || [];
 
     resultsSection.classList.remove('hidden');
+
+    // Draw bounding boxes on canvas
+    drawAnnotations();
 }
 
 // Update modal confirmation text based on provider
@@ -259,18 +397,6 @@ function updateModalText() {
         modalConfirmText.textContent = `Order the following items on ${providerName}?`;
     }
 }
-
-// Order button - show confirmation modal
-orderBtn.addEventListener('click', () => {
-    modalItems.innerHTML = '';
-    missingProducts.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = `${item.name} × ${item.quantity}`;
-        modalItems.appendChild(li);
-    });
-    updateModalText();
-    modal.classList.remove('hidden');
-});
 
 // Modal cancel
 modalCancel.addEventListener('click', () => {
@@ -547,7 +673,8 @@ const translations = {
         status_select_date: "❌ Please select a date.",
         status_no_items: "❌ No items to order",
         no_items_to_order: "No items to order",
-        ai_thinking_title: "🧠 AI Thinking Process"
+        ai_thinking_title: "🧠 AI Thinking Process",
+        show_masks: "📦 Show Boxes & Labels"
     },
     tr: {
         subtitle: "Buzdolabı Algılama ve Otomatik Sipariş",
@@ -593,7 +720,8 @@ const translations = {
         status_select_date: "❌ Lütfen bir tarih seçin.",
         status_no_items: "❌ Sipariş edilecek ürün yok",
         no_items_to_order: "Sipariş edilecek ürün yok",
-        ai_thinking_title: "🧠 YZ Düşünme Süreci"
+        ai_thinking_title: "🧠 YZ Düşünme Süreci",
+        show_masks: "📦 Kutuları ve Etiketleri Göster"
     }
 };
 

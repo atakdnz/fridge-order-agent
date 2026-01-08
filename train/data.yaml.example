@@ -1,0 +1,52 @@
+# YOLOv8 Buzdolabı Veri Seti Konfigürasyonu
+# ==========================================
+# Bu dosya SynteticImageGenerator'dan export edilen
+# YOLO format veri setinin yapısını tanımlar.
+
+# Veri yolları (train.py'nin çalıştığı dizine göre)
+path: ../data/annotations/yolo  # Veri seti kök dizini
+train: images/train             # Eğitim görüntüleri
+val: images/val                 # Validation görüntüleri
+test: images/test               # Test görüntüleri
+
+# Sınıf sayısı
+nc: 17
+
+# Sınıf isimleri (17 buzdolabı ürünü)
+names:
+  0: milk
+  1: eggs
+  2: cheese
+  3: yogurt
+  4: apple
+  5: orange
+  6: lemon
+  7: strawberries
+  8: tomato
+  9: carrot
+  10: lettuce
+  11: cucumber
+  12: broccoli
+  13: chicken
+  14: juice
+  15: water_bottle
+  16: ketchup
+
+# Türkçe karşılıklar (referans için)
+# milk: Süt
+# eggs: Yumurta
+# cheese: Peynir
+# yogurt: Yoğurt
+# apple: Elma
+# orange: Portakal
+# lemon: Limon
+# strawberries: Çilek
+# tomato: Domates
+# carrot: Havuç
+# lettuce: Marul
+# cucumber: Salatalık
+# broccoli: Brokoli
+# chicken: Tavuk
+# juice: Meyve Suyu
+# water_bottle: Su Şişesi
+# ketchup: Ketçap

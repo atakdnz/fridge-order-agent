@@ -38,7 +38,8 @@ CREATE TABLE preferences (
     id INTEGER PRIMARY KEY,
     custom_instructions TEXT,
     default_mode TEXT,
-    preferred_provider TEXT DEFAULT 'getir'  -- 'getir', 'migros', or 'akbal'
+    preferred_provider TEXT DEFAULT 'getir',  -- 'getir', 'migros', or 'akbal'
+    detection_threshold REAL DEFAULT 0.5      -- Confidence threshold (0.0-1.0)
 );
 ```
 
@@ -48,8 +49,10 @@ CREATE TABLE preferences (
 
 ### 1. Fridge Detection
 - Upload fridge image (drag & drop, file picker, paste)
-- YOLO detection with configurable confidence threshold
+- YOLO detection with configurable confidence threshold (saved to DB)
 - Detects: milk, eggs, cheese, water_bottle, tomato, cucumber, orange, lemon, butter
+- **Bounding box visualization**: Toggle checkbox to show/hide detection boxes with labels and confidence scores on the image
+- Color-coded boxes per product category
 
 ### 2. Smart Product Selection
 - Uses OpenRouter API (Llama 3.1 405B) for intelligent product choice
@@ -97,6 +100,10 @@ CREATE TABLE preferences (
 - Instructions saved to database on blur
 - Loaded on page refresh
 
+### 8. Detection Threshold Persistence
+- Threshold slider value saved to database on change
+- Loaded on page refresh
+
 ---
 
 ## API Endpoints
@@ -104,8 +111,8 @@ CREATE TABLE preferences (
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Serve frontend |
-| POST | `/detect` | Detect items in image |
-| POST | `/order` | Order missing items |
+| POST | `/detect` | Detect items in image (returns bboxes) |
+| POST | `/order` | Order items via AI suggestions |
 | GET | `/history` | Get all history records |
 | POST | `/history` | Add history record |
 | DELETE | `/history/<id>` | Delete specific record |
@@ -127,17 +134,33 @@ CREATE TABLE preferences (
 - `analyze_history()`: Analyzes fridge history, suggests missing items
 - `choose_product()`: Picks best product from search results
 
+### `detection/detector.py`
+- FridgeDetector class with YOLO model
+- `detect()`: Returns both counts dict and full detection list with bounding boxes
+- Detection objects include: class, name, confidence, bbox coordinates, image dimensions
+- Used by frontend to draw annotations on canvas
+
 ### `db/database.py`
 - SQLite database at `data/fridge.db`
 - Tables: fridge_history, preferences
 - `get_history_context()`: Formats history for LLM prompt
+- `get_detection_threshold()`: Returns saved threshold value
 
 ### `static/app.js`
 - History management (load, render, delete, save, clear)
 - LLM analysis flow (analyze button, display suggestions)
 - i18n with EN/TR translations
 - localStorage for language persistence
-- Preferences load/save
+- Preferences load/save (including threshold)
+- **Canvas annotation system**: Draws bounding boxes with labels on detected image
+- Color-coded detection boxes with confidence percentages
+
+### `browser/getir_client.py`
+- `add_product_by_index()`: Adds product at specific index with quantity support
+- `add_product()`: Adds first product from search with quantity support
+- `add_product_smart()`: Uses AI to select best product from search results
+- **Critical quantity fix**: Uses XPath to scope plus button search to specific product's parent container, preventing wrong button clicks when adding quantity > 1 to products at index > 0
+- Session persistence via `.auth/getir_session.json`
 
 ---
 
@@ -146,7 +169,7 @@ CREATE TABLE preferences (
 ### Dependencies
 - Flask
 - ultralytics (YOLO)
-- selenium
+- playwright
 - requests
 - python-dotenv
 - sqlite3 (builtin)
@@ -175,7 +198,18 @@ python server.py
 - Migros requires manual login first (session saved to `.auth/migros_session.json`)
 - Akbal Market does not require login - cart works without authentication
 - Provider preference persists across page reloads (stored in DB + localStorage)
+- "Missing Items" section removed from UI - ordering now handled via AI suggestions only
+- Detection threshold persists across sessions (stored in DB)
+
+## Bug Fixes
+
+### Quantity Addition Bug (Fixed 2025-12-22)
+**Problem**: When adding quantity > 1 for products at index > 0, Playwright would click the wrong button (often a minus button from another product), causing items to be removed instead of incremented.
+
+**Root Cause**: Code used `button[aria-label='counter'].nth(1)` globally across ALL counter buttons on the page, not scoped to the specific product.
+
+**Solution**: Now uses XPath to find the product's parent container, then selects `.last` counter button within that scoped context (which is always the plus button after initial add).
 
 ---
 
-*Last Updated: 2025-12-20*
+*Last Updated: 2025-12-22*

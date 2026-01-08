@@ -48,11 +48,17 @@ def init_db():
     columns = [col[1] for col in cursor.fetchall()]
     if 'preferred_provider' not in columns:
         cursor.execute("ALTER TABLE preferences ADD COLUMN preferred_provider TEXT DEFAULT 'getir'")
+    
+    # Check if detection_threshold column exists, add if not (migration)
+    cursor.execute("PRAGMA table_info(preferences)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'detection_threshold' not in columns:
+        cursor.execute("ALTER TABLE preferences ADD COLUMN detection_threshold REAL DEFAULT 0.5")
 
     # Insert default preferences if not exists
     cursor.execute("""
-        INSERT OR IGNORE INTO preferences (id, custom_instructions, default_mode, preferred_provider)
-        VALUES (1, '', 'smart', 'getir')
+        INSERT OR IGNORE INTO preferences (id, custom_instructions, default_mode, preferred_provider, detection_threshold)
+        VALUES (1, '', 'smart', 'getir', 0.5)
     """)
     
     conn.commit()
@@ -158,7 +164,7 @@ def get_preferences() -> dict:
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT custom_instructions, default_mode, preferred_provider FROM preferences WHERE id = 1")
+    cursor.execute("SELECT custom_instructions, default_mode, preferred_provider, detection_threshold FROM preferences WHERE id = 1")
     row = cursor.fetchone()
     conn.close()
 
@@ -166,9 +172,16 @@ def get_preferences() -> dict:
         return {
             "custom_instructions": row["custom_instructions"] or "",
             "default_mode": row["default_mode"] or "smart",
-            "preferred_provider": row["preferred_provider"] or "getir"
+            "preferred_provider": row["preferred_provider"] or "getir",
+            "detection_threshold": row["detection_threshold"] if row["detection_threshold"] is not None else 0.5
         }
-    return {"custom_instructions": "", "default_mode": "smart", "preferred_provider": "getir"}
+    return {"custom_instructions": "", "default_mode": "smart", "preferred_provider": "getir", "detection_threshold": 0.5}
+
+
+def get_detection_threshold() -> float:
+    """Get the detection confidence threshold (0.0 to 1.0)."""
+    prefs = get_preferences()
+    return prefs.get("detection_threshold", 0.5)
 
 
 def get_preferred_provider() -> str:
@@ -184,7 +197,7 @@ def set_preferred_provider(provider: str) -> None:
     set_preferences(preferred_provider=provider)
 
 
-def set_preferences(custom_instructions: str = None, default_mode: str = None, preferred_provider: str = None) -> None:
+def set_preferences(custom_instructions: str = None, default_mode: str = None, preferred_provider: str = None, detection_threshold: float = None) -> None:
     """Update user preferences."""
     conn = get_connection()
     cursor = conn.cursor()
@@ -203,6 +216,10 @@ def set_preferences(custom_instructions: str = None, default_mode: str = None, p
     if preferred_provider is not None:
         updates.append("preferred_provider = ?")
         values.append(preferred_provider)
+    
+    if detection_threshold is not None:
+        updates.append("detection_threshold = ?")
+        values.append(float(detection_threshold))
 
     if updates:
         cursor.execute(
